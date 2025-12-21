@@ -21,11 +21,18 @@ class HexGame {
         this.svgBoard = document.getElementById('hex-board');
         this.boardWrapper = document.querySelector('.board-wrapper');
         this.currentPlayerStone = document.querySelector('.current-player-stone');
+        this.currentPlayerLabel = document.querySelector('.current-player-label');
         this.winnerModal = document.getElementById('winner-modal');
         this.winnerText = document.getElementById('winner-text');
         this.newGameBtn = document.getElementById('new-game');
         this.playAgainBtn = document.getElementById('play-again');
         this.boardSizeSelect = document.getElementById('board-size');
+
+        // Theme and info elements
+        this.themeToggleBtn = document.getElementById('theme-toggle');
+        this.infoBtn = document.getElementById('info-btn');
+        this.infoModal = document.getElementById('info-modal');
+        this.infoCloseBtn = document.getElementById('info-close');
 
         this.init();
     }
@@ -42,18 +49,14 @@ class HexGame {
         if (!wrapper) return 22; // Default fallback
 
         const rect = wrapper.getBoundingClientRect();
-        const availableWidth = rect.width - 40; // Padding
-        const availableHeight = rect.height - 40; // Padding
-
-        // Calculate the board dimensions based on hex radius
-        // Board width = hexWidth * size + (hexWidth / 2) * (size - 1) + padding
-        // Board height = hexVerticalSpacing * size + hexRadius + padding
+        const availableWidth = rect.width - 80; // Padding for corner labels
+        const availableHeight = rect.height - 80; // Padding for corner labels
 
         // For a given radius r:
         // hexWidth = sqrt(3) * r
         // hexVerticalSpacing = 1.5 * r
-        // boardWidth ≈ sqrt(3) * r * size + sqrt(3) * r * (size - 1) / 2 = sqrt(3) * r * (1.5 * size - 0.5)
-        // boardHeight ≈ 1.5 * r * size + r = r * (1.5 * size + 1)
+        // boardWidth ≈ sqrt(3) * r * (1.5 * size - 0.5)
+        // boardHeight ≈ r * (1.5 * size + 1)
 
         const widthFactor = Math.sqrt(3) * (1.5 * this.size - 0.5);
         const heightFactor = 1.5 * this.size + 1;
@@ -65,25 +68,51 @@ class HexGame {
         let optimalRadius = Math.min(maxRadiusFromWidth, maxRadiusFromHeight);
 
         // Clamp to reasonable bounds
-        optimalRadius = Math.max(12, Math.min(35, optimalRadius));
+        optimalRadius = Math.max(12, Math.min(40, optimalRadius));
 
         return optimalRadius;
     }
 
     init() {
+        this.loadTheme();
         this.setupEventListeners();
         this.newGame();
     }
 
+    loadTheme() {
+        const savedTheme = localStorage.getItem('hex-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('hex-theme', newTheme);
+    }
+
     setupEventListeners() {
+        // Game controls
         this.newGameBtn.addEventListener('click', () => this.newGame());
         this.playAgainBtn.addEventListener('click', () => {
-            this.hideModal();
+            this.hideModal(this.winnerModal);
             this.newGame();
         });
         this.boardSizeSelect.addEventListener('change', (e) => {
             this.size = parseInt(e.target.value);
             this.newGame();
+        });
+
+        // Theme toggle
+        this.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+
+        // Info modal
+        this.infoBtn.addEventListener('click', () => this.showInfoModal());
+        this.infoCloseBtn.addEventListener('click', () => this.hideModal(this.infoModal));
+        this.infoModal.addEventListener('click', (e) => {
+            if (e.target === this.infoModal) {
+                this.hideModal(this.infoModal);
+            }
         });
 
         // Handle window resize to recalculate board size
@@ -101,6 +130,21 @@ class HexGame {
                 this.renderBoard();
             }, 200);
         });
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.hideModal(this.infoModal);
+            }
+        });
+    }
+
+    showInfoModal() {
+        this.infoModal.classList.remove('hidden');
+    }
+
+    hideModal(modal) {
+        modal.classList.add('hidden');
     }
 
     newGame() {
@@ -177,7 +221,6 @@ class HexGame {
     }
 
     drawBorderEdges() {
-        const padding = 20;
         const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         edgeGroup.setAttribute('class', 'board-edges');
 
@@ -320,10 +363,16 @@ class HexGame {
     }
 
     updateCurrentPlayerIndicator() {
+        const playerName = this.currentPlayer === 1 ? 'Player 1' : 'Player 2';
+
         if (this.currentPlayer === 1) {
             this.currentPlayerStone.classList.remove('blue');
         } else {
             this.currentPlayerStone.classList.add('blue');
+        }
+
+        if (this.currentPlayerLabel) {
+            this.currentPlayerLabel.textContent = playerName;
         }
     }
 
@@ -431,10 +480,6 @@ class HexGame {
         this.winnerText.style.webkitTextFillColor = 'transparent';
         this.winnerText.style.backgroundClip = 'text';
         this.winnerModal.classList.remove('hidden');
-    }
-
-    hideModal() {
-        this.winnerModal.classList.add('hidden');
     }
 }
 
