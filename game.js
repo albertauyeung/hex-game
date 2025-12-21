@@ -13,14 +13,13 @@ class HexGame {
         this.gameOver = false;
         this.winningPath = [];
 
-        // Hexagon geometry
+        // Hexagon geometry (will be calculated dynamically)
         this.hexRadius = 22;
-        this.hexHeight = this.hexRadius * 2;
-        this.hexWidth = Math.sqrt(3) * this.hexRadius;
-        this.hexVerticalSpacing = this.hexHeight * 0.75;
+        this.updateHexGeometry();
 
         // DOM elements
         this.svgBoard = document.getElementById('hex-board');
+        this.boardWrapper = document.querySelector('.board-wrapper');
         this.currentPlayerStone = document.querySelector('.current-player-stone');
         this.winnerModal = document.getElementById('winner-modal');
         this.winnerText = document.getElementById('winner-text');
@@ -29,6 +28,46 @@ class HexGame {
         this.boardSizeSelect = document.getElementById('board-size');
 
         this.init();
+    }
+
+    updateHexGeometry() {
+        this.hexHeight = this.hexRadius * 2;
+        this.hexWidth = Math.sqrt(3) * this.hexRadius;
+        this.hexVerticalSpacing = this.hexHeight * 0.75;
+    }
+
+    calculateOptimalHexRadius() {
+        // Get available space from the board wrapper
+        const wrapper = this.boardWrapper;
+        if (!wrapper) return 22; // Default fallback
+
+        const rect = wrapper.getBoundingClientRect();
+        const availableWidth = rect.width - 40; // Padding
+        const availableHeight = rect.height - 40; // Padding
+
+        // Calculate the board dimensions based on hex radius
+        // Board width = hexWidth * size + (hexWidth / 2) * (size - 1) + padding
+        // Board height = hexVerticalSpacing * size + hexRadius + padding
+
+        // For a given radius r:
+        // hexWidth = sqrt(3) * r
+        // hexVerticalSpacing = 1.5 * r
+        // boardWidth ≈ sqrt(3) * r * size + sqrt(3) * r * (size - 1) / 2 = sqrt(3) * r * (1.5 * size - 0.5)
+        // boardHeight ≈ 1.5 * r * size + r = r * (1.5 * size + 1)
+
+        const widthFactor = Math.sqrt(3) * (1.5 * this.size - 0.5);
+        const heightFactor = 1.5 * this.size + 1;
+
+        const maxRadiusFromWidth = availableWidth / widthFactor;
+        const maxRadiusFromHeight = availableHeight / heightFactor;
+
+        // Use the smaller of the two to ensure it fits
+        let optimalRadius = Math.min(maxRadiusFromWidth, maxRadiusFromHeight);
+
+        // Clamp to reasonable bounds
+        optimalRadius = Math.max(12, Math.min(35, optimalRadius));
+
+        return optimalRadius;
     }
 
     init() {
@@ -46,6 +85,22 @@ class HexGame {
             this.size = parseInt(e.target.value);
             this.newGame();
         });
+
+        // Handle window resize to recalculate board size
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.renderBoard();
+            }, 150);
+        });
+
+        // Handle orientation change for tablets
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                this.renderBoard();
+            }, 200);
+        });
     }
 
     newGame() {
@@ -60,6 +115,10 @@ class HexGame {
     renderBoard() {
         // Clear existing board
         this.svgBoard.innerHTML = '';
+
+        // Calculate optimal hex radius for current viewport
+        this.hexRadius = this.calculateOptimalHexRadius();
+        this.updateHexGeometry();
 
         // Calculate board dimensions
         const boardWidth = this.hexWidth * this.size + (this.hexWidth / 2) * (this.size - 1) + 40;
