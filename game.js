@@ -113,8 +113,10 @@ class HexGame {
     }
 
     renderBoard() {
-        // Clear existing board
+        // Clear existing board and reset SVG size to prevent feedback loop
         this.svgBoard.innerHTML = '';
+        this.svgBoard.setAttribute('width', 0);
+        this.svgBoard.setAttribute('height', 0);
 
         // Calculate optimal hex radius for current viewport
         this.hexRadius = this.calculateOptimalHexRadius();
